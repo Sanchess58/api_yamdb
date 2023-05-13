@@ -116,7 +116,7 @@ USE_L10N = True
 
 USE_TZ = True
 
-AUTH_USER_MODEL = 'api.User'
+AUTH_USER_MODEL = 'reviews.User'
 # Static files (CSS, JavaScript, Images)
 
 STATIC_URL = "/static/"

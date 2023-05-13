@@ -1,4 +1,4 @@
-from .models import User
+from reviews.models import User
 from rest_framework import viewsets
 from .serializers import UserSerializer, TokenSerializer
 from rest_framework.authtoken.models import Token
