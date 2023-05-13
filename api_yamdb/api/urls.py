@@ -1,12 +1,13 @@
 from rest_framework import routers
 from django.urls import include, path
-from rest_framework_simplejwt.views import (TokenObtainPairView,
-                                            TokenRefreshView, TokenVerifyView)
+from .views import UserViewSet, GetToken, SignUpViewSet
 router = routers.DefaultRouter()
 
+
+router.register(r'signup', SignUpViewSet, basename='signup')
 urlpatterns = [
-    path('jwt/create/', TokenObtainPairView.as_view()),
-    path('jwt/refresh/', TokenRefreshView.as_view()),
-    path('jwt/verify/', TokenVerifyView.as_view())
+    
+    path('v1/auth/', include(router.urls))
+    
     
 ]
