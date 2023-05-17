@@ -1,10 +1,9 @@
 import os
 from datetime import timedelta
-from api_yamdb.secret import PASSWORD_EMAIL, SECRET
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = SECRET
+SECRET_KEY = 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -130,6 +129,6 @@ EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 
 EMAIL_HOST_USER = 'projectpracticum1@yandex.ru'
-EMAIL_HOST_PASSWORD = PASSWORD_EMAIL
+EMAIL_HOST_PASSWORD = 'vgjdoejtobtbmdtu'
 
 EMAIL_FROM = EMAIL_HOST_USER
