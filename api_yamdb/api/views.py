@@ -1,96 +1,79 @@
-from django.conf import settings
-from django.db import IntegrityError
 from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import permissions, status, viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-from rest_framework.views import APIView
-
+import uuid
 from api.filters import TitleFilter
 from api.mixins import ModelMixinSet
 from api.permissions import (
-    ChangeAdminOnly, StaffOrReadOnly, AuthorOrStaffOrReadOnly
+    StaffOrReadOnly, AuthorOrStaffOrReadOnly
 )
-from api.serializers import (
-    ActivationSerializer, AdminSerializer, CategorySerializer,
+from api.serializers import ( CategorySerializer,
     CommentSerializer, GenreSerializer, ReviewsSerializer,
     SignUpSerializer, TitleCreateSerializer,
-    TitleReciveSerializer, UsersSerializer
+    TitleReciveSerializer
 )
-from auth.get_token import get_tokens_for_user
-from auth.send_code import send_mail_with_code
 from reviews.models import (
     Category, Genre, Review, Title, User,
 )
 
 
-class SignUp(APIView):
-    """
-    Регистрация.
-    """
+class SignUpViewSet(viewsets.ModelViewSet):
+    """Класс регистрации пользователя."""
+    queryset = User.objects.all()
+    serializer_class = SignUpSerializer
 
-    permission_classes = (permissions.AllowAny,)
+    def perform_create(self, serializer):
+        serializer.save(confirmation_code=uuid.uuid4())
+        user = User.objects.get(username=serializer.data.get('username'))
 
-    def post(self, request):
-        serializer = SignUpSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            user = User.objects.get_or_create(
-                username=serializer.validated_data['username'],
-                email=serializer.validated_data['email'],
-            )[settings.SIGN_UP_USER_INDEX]
-        except IntegrityError:
-            return Response(
-                'Имя пользователя или электронная почта занята.',
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        user.confirmation_code = send_mail_with_code(request.data)
-        user.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        send_mail(subject='Код подтверждения',
+                  message=f'{user.confirmation_code}-код подтверждения',
+                  from_email='projectpracticum1@yandex.ru',
+                  recipient_list=[user.email],
+                  fail_silently=False)
 
 
-class Activation(APIView):
-    """
-    Получение JWT-токена.
-    """
+class GetTokenView(TokenObtainPairView):
+    """Класс получения токена."""
 
-    permission_classes = (permissions.AllowAny,)
+    serializer_class = TokenSerializer
 
     def post(self, request):
-        serializer = ActivationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = User.objects.get(
-            username=serializer.validated_data['username'])
-        token = get_tokens_for_user(user)
-        return Response({'token': token},
-                        status=status.HTTP_201_CREATED)
+        user = User.objects.get(username=request.data.get('username'))
+
+        if (
+            request.data.get('confirmation_code')
+            == str(user.confirmation_code)
+        ):
+            token = AccessToken.for_user(user)
+            return Response({'token': str(token)}, status=status.HTTP_200_OK)
+        return Response("Неверный код", status=status.HTTP_403_FORBIDDEN)
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """
-    Работа с пользователями.
-    """
-
+    """Класс работы с пользователем."""
     queryset = User.objects.all()
-    serializer_class = AdminSerializer
-    permission_classes = (ChangeAdminOnly,)
-    filter_backends = (SearchFilter,)
+    serializer_class = UserSerializer
+    permission_classes = (AdminOrReadOnly,)
     lookup_field = 'username'
-    search_fields = ('username',)
-    http_method_names = ['get', 'post', 'head', 'patch', 'delete']
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     @action(
-        detail=False, methods=['get', 'patch'],
-        url_path='me', url_name='me',
-        permission_classes=(permissions.IsAuthenticated,)
+        detail=False,
+        methods=['get', 'patch'],
+        url_path='me',
+        permission_classes=[
+            IamOrReadOnly
+        ]
     )
-    def my_profile(self, request):
-        serializer = UsersSerializer(request.user)
+    def me(self, request):
+        serializer = UserSerializer(request.user)
         if request.method == 'PATCH':
-            serializer = UsersSerializer(
+            serializer = UserSerializer(
                 request.user, data=request.data, partial=True
             )
             serializer.is_valid(raise_exception=True)
