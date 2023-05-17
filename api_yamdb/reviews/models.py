@@ -25,3 +25,5 @@ class User(AbstractUser):
         choices=ROLES_CHOICES,
         max_length=9
     )
+    email = models.EmailField(unique=True, max_length=254)
+    username = models.CharField(unique=True, max_length=150)
