@@ -1,4 +1,5 @@
 from django.db.models import Avg
+from django.db import IntegrityError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -6,16 +7,22 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 import uuid
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.views import TokenObtainPairView
 from api.filters import TitleFilter
 from api.mixins import ModelMixinSet
 from api.permissions import (
-    StaffOrReadOnly, AuthorOrStaffOrReadOnly
+    StaffOrReadOnly, AuthorOrStaffOrReadOnly, 
+    AuthReadOnly, AdminOrReadOnly
 )
+
+from rest_framework_simplejwt.tokens import AccessToken
 from api.serializers import ( CategorySerializer,
     CommentSerializer, GenreSerializer, ReviewsSerializer,
     SignUpSerializer, TitleCreateSerializer,
-    TitleReciveSerializer
+    TitleReciveSerializer, TokenSerializer, UserSerializer
 )
+from django.core.mail import send_mail
 from reviews.models import (
     Category, Genre, Review, Title, User,
 )
@@ -25,16 +32,19 @@ class SignUpViewSet(viewsets.ModelViewSet):
     """Класс регистрации пользователя."""
     queryset = User.objects.all()
     serializer_class = SignUpSerializer
+    permission_classes = (AllowAny,)
 
     def perform_create(self, serializer):
-        serializer.save(confirmation_code=uuid.uuid4())
-        user = User.objects.get(username=serializer.data.get('username'))
-
+        user = get_object_or_404(User, username=serializer.data.get('username'))
         send_mail(subject='Код подтверждения',
                   message=f'{user.confirmation_code}-код подтверждения',
                   from_email='projectpracticum1@yandex.ru',
                   recipient_list=[user.email],
                   fail_silently=False)
+        serializer.save(confirmation_code=uuid.uuid4())
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+        
 
 
 class GetTokenView(TokenObtainPairView):
@@ -43,7 +53,8 @@ class GetTokenView(TokenObtainPairView):
     serializer_class = TokenSerializer
 
     def post(self, request):
-        user = User.objects.get(username=request.data.get('username'))
+        
+        user = get_object_or_404(User, username=request.data.get('username'))
 
         if (
             request.data.get('confirmation_code')
@@ -67,7 +78,7 @@ class UserViewSet(viewsets.ModelViewSet):
         methods=['get', 'patch'],
         url_path='me',
         permission_classes=[
-            IamOrReadOnly
+            AuthReadOnly
         ]
     )
     def me(self, request):

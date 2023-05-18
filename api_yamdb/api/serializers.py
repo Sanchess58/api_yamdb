@@ -4,9 +4,36 @@ from django.http import Http404
 from rest_framework import serializers
 
 from reviews.models import (
-    ROLE_CHOICES, Category, Comment,
-    Genre, Review, Title, User,
+    Category, Comment,
+    Genre, Review, Title, User
 )
+
+
+class UserSerializer(serializers.ModelSerializer):
+    username = serializers.SlugField(max_length=150)
+    email = serializers.EmailField(max_length=254)
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+
+    class Meta:
+        model = User
+        fields = (
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "bio",
+            "role"
+        )
+        read_only_fields = ("role",)
+
+class TokenSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(max_length=150)
+    confirmation_code = serializers.UUIDField(required=True)
+
+    class Meta:
+        model = User
+        fields = ("username", "confirmation_code")
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -16,7 +43,7 @@ class SignUpSerializer(serializers.ModelSerializer):
 
     username = serializers.SlugField(max_length=150)
     email = serializers.EmailField(max_length=254)
-
+    
     class Meta:
         model = User
         fields = ('username', 'email')
@@ -35,66 +62,34 @@ class SignUpSerializer(serializers.ModelSerializer):
         return data
 
 
-class ActivationSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор получения JWT-токена.
-    """
+# class ActivationSerializer(serializers.ModelSerializer):
+#     """
+#     Сериализатор получения JWT-токена.
+#     """
 
-    username = serializers.SlugField(max_length=150)
-    confirmation_code = serializers.CharField(required=True)
+#     username = serializers.SlugField(max_length=150)
+#     confirmation_code = serializers.CharField(required=True)
 
-    class Meta:
-        model = User
-        fields = ('username', 'confirmation_code')
+#     class Meta:
+#         model = User
+#         fields = ('username', 'confirmation_code')
 
-    def validate_username(self, username):
-        if User.objects.filter(username=username).exists():
-            return username
-        raise Http404(f'Недопустимое имя пользователя'
-                      f'или пользователь `{username}` не найден.')
-        # У нас, к сожалению, не получилось вернуть код 404 из сериализатора
-        # А тесты требуют именно 404, поэтому чтобы не засорять вьюхи
-        # решили реализовать эту логику подобным образом
+#     def validate_username(self, username):
+#         if User.objects.filter(username=username).exists():
+#             return username
+#         raise Http404(f'Недопустимое имя пользователя'
+#                       f'или пользователь `{username}` не найден.')
+#         # У нас, к сожалению, не получилось вернуть код 404 из сериализатора
+#         # А тесты требуют именно 404, поэтому чтобы не засорять вьюхи
+#         # решили реализовать эту логику подобным образом
 
-    def validate(self, data):
-        user = User.objects.get(username=data['username'])
-        if data['confirmation_code'] != user.confirmation_code:
-            raise ValidationError(
-                {"Ошибка": 'Неверный код подтверждения'}
-            )
-        return data
-
-
-class AdminSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор работы администратора с доступом к ролям.
-    """
-
-    role = serializers.ChoiceField(choices=ROLE_CHOICES, required=False)
-
-    class Meta:
-        model = User
-        fields = (
-            'username', 'email', 'first_name',
-            'last_name', 'bio', 'role',
-        )
-
-
-class UsersSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор модели User.
-    """
-
-    username = serializers.SlugField(max_length=150)
-    email = serializers.EmailField(max_length=254)
-
-    class Meta:
-        model = User
-        fields = (
-            'username', 'email', 'first_name',
-            'last_name', 'bio', 'role',
-        )
-        read_only_fields = ('username', 'email', 'role',)
+#     def validate(self, data):
+#         user = User.objects.get(username=data['username'])
+#         if data['confirmation_code'] != user.confirmation_code:
+#             raise ValidationError(
+#                 {"Ошибка": 'Неверный код подтверждения'}
+#             )
+#         return data
 
 
 class CategorySerializer(serializers.ModelSerializer):

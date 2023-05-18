@@ -6,9 +6,9 @@ from django.db import models
 from reviews.validators import check_future_year
 
 ROLE_CHOICES = [
-    (settings.USER, settings.USER),
-    (settings.ADMIN, settings.ADMIN),
-    (settings.MODERATOR, settings.MODERATOR),
+    ("user", "Пользователь"),
+    ("moderator", "Модератор"),
+    ("admin", "Администратор")
 ]
 
 

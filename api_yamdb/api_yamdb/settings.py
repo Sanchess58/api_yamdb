@@ -9,7 +9,7 @@ load_dotenv()
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'api_yamdb.settings')
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', default='#7jc3)js0k176thc-z=1%4^s4_6g239*)1%2+oz0qd3@pc7=fb')
+SECRET_KEY = 'p&l%385148kslhtyn^##a1)ilz@4zqj=rq&agdol^##zgl9(vs'
 
 DEBUG = True
 
@@ -154,13 +154,18 @@ STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 AUTH_USER_MODEL = 'reviews.User'
 
 ADMINS_TEXT_LENGHT = 20
-CONFIRMATION_DIR = f'{BASE_DIR}/auth/confirmation'
 MIN_SCORE_VALUE = 1
 MAX_SCORE_VALUE = 10
-MIN_CONFIRMATION_CODE_VALUE = 100000
-MAX_CONFIRMATION_CODE_VALUE = 999999
-SIGN_UP_USER_INDEX = 0
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.yandex.ru'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+
+EMAIL_HOST_USER = 'projectpracticum1@yandex.ru'
+EMAIL_HOST_PASSWORD = 'vgjdoejtobtbmdtu'
+
+EMAIL_FROM = EMAIL_HOST_USER
 # Роли пользователей.
 USER = 'user'
 ADMIN = 'admin'
