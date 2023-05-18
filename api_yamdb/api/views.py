@@ -35,13 +35,14 @@ class SignUpViewSet(viewsets.ModelViewSet):
     permission_classes = (AllowAny,)
 
     def perform_create(self, serializer):
+        serializer.save(confirmation_code=uuid.uuid4())
         user = get_object_or_404(User, username=serializer.data.get('username'))
         send_mail(subject='Код подтверждения',
                   message=f'{user.confirmation_code}-код подтверждения',
                   from_email='projectpracticum1@yandex.ru',
                   recipient_list=[user.email],
                   fail_silently=False)
-        serializer.save(confirmation_code=uuid.uuid4())
+        
         
         return Response(serializer.data, status=status.HTTP_200_OK)
         
