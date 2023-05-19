@@ -34,19 +34,24 @@ class SignUpViewSet(viewsets.ModelViewSet):
     serializer_class = SignUpSerializer
     permission_classes = (AllowAny,)
 
-    def perform_create(self, serializer):
-        serializer.save(confirmation_code=uuid.uuid4())
-        user = get_object_or_404(User, username=serializer.data.get('username'))
+    def post(self, request):
+        serializer = SignUpSerializer(data=request.data)
+        serializer.is_valid()
+        try:
+            user = User.objects.get_or_create(
+                username=serializer.validated_data['username'],
+                email=serializer.validated_data['email'],
+                )
+        except IntegrityError:
+            return Response("Уже есть", status=status.HTTP_400_BAD_REQUEST)
+        
         send_mail(subject='Код подтверждения',
                   message=f'{user.confirmation_code}-код подтверждения',
                   from_email='projectpracticum1@yandex.ru',
                   recipient_list=[user.email],
                   fail_silently=False)
-        
-        
+        user.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
-        
-
 
 class GetTokenView(TokenObtainPairView):
     """Класс получения токена."""
@@ -54,8 +59,7 @@ class GetTokenView(TokenObtainPairView):
     serializer_class = TokenSerializer
 
     def post(self, request):
-        
-        user = get_object_or_404(User, username=request.data.get('username'))
+        user = get_object_or_404(User,username=request.data.get('username'))
 
         if (
             request.data.get('confirmation_code')
@@ -90,7 +94,6 @@ class UserViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
