@@ -1,8 +1,6 @@
 from django.contrib import admin
 
-from reviews.models import (
-    Category, Comment, Genre, Review, Title, User,
-)
+from reviews.models import Category, Comment, Genre, Review, Title, User
 
 
 @admin.register(Review)
@@ -21,6 +19,14 @@ class ReviewAdmin(admin.ModelAdmin):
         'author',
         'text',
     )
+
+
+class GenreInline(admin.TabularInline):
+    model = Genre
+
+
+class TitleInline(admin.TabularInline):
+    inlines = [GenreInline]
 
 
 admin.site.register(Category)

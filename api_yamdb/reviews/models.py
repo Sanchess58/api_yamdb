@@ -1,24 +1,14 @@
 from django.conf import settings
-from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from users.models import User
 
 from reviews.validators import check_future_year
 
-ROLE_CHOICES = [
-    (settings.USER, settings.USER),
-    (settings.ADMIN, settings.ADMIN),
-    (settings.MODERATOR, settings.MODERATOR),
-]
 
+class TimeDateModelMixin(models.Model):
+    """Абстрактная модель. Добавляем дату создания."""
 
-class CreatedModel(models.Model):
-    """Абстрактная модель. Добавляем текст и дату создания."""
-
-    text = models.TextField(
-        verbose_name='Текст',
-        help_text='Введите ваш текст!',
-    )
     pub_date = models.DateTimeField(
         verbose_name='Дата публикации',
         auto_now_add=True,
@@ -37,81 +27,7 @@ class CreatedModel(models.Model):
         )
 
 
-class User(AbstractUser):
-    """Модель Юзера."""
-
-    username = models.SlugField(
-        max_length=150,
-        unique=True,
-        blank=False,
-        null=False,
-        verbose_name='Пользователь',
-        help_text='Введите имя пользователя'
-    )
-
-    email = models.EmailField(
-        verbose_name='email address',
-        max_length=254,
-        unique=True,
-    )
-    role = models.CharField(
-        verbose_name='Роль',
-        max_length=20,
-        choices=ROLE_CHOICES,
-        default=settings.USER,
-        help_text='Выберете роль пользователя'
-    )
-    bio = models.TextField(
-        verbose_name='Биография',
-        blank=True,
-    )
-    first_name = models.CharField(
-        verbose_name='Имя',
-        max_length=150,
-        blank=True,
-        help_text='Имя пользователя'
-    )
-    last_name = models.CharField(
-        verbose_name='Фамилия',
-        max_length=150,
-        blank=True,
-        help_text='Фамилия пользователя'
-    )
-    confirmation_code = models.CharField(
-        'код подтверждения',
-        max_length=255,
-        null=True,
-        blank=False,
-        default='XXXX'
-    )
-
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email']
-
-    @property
-    def is_user(self):
-        return self.role == settings.USER
-
-    @property
-    def is_admin(self):
-        return self.role == settings.ADMIN
-
-    @property
-    def is_moderator(self):
-        return self.role == settings.MODERATOR
-
-    class Meta:
-        ordering = ('id',)
-        verbose_name = 'Пользователь'
-        verbose_name_plural = 'Пользователи'
-
-    def __str__(self):
-        return self.username
-
-
-class Category(models.Model):
-    """Модель Категорий."""
-
+class CategoryGenreModelMixin(models.Model):
     name = models.CharField(
         verbose_name='Название категории',
         max_length=200
@@ -123,6 +39,13 @@ class Category(models.Model):
     )
 
     class Meta:
+        abstract = True
+
+
+class Category(CategoryGenreModelMixin):
+    """Модель Категорий."""
+
+    class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
@@ -130,18 +53,8 @@ class Category(models.Model):
         return self.name
 
 
-class Genre(models.Model):
+class Genre(CategoryGenreModelMixin):
     """Модель Жанров."""
-
-    name = models.CharField(
-        verbose_name='Название жанра',
-        max_length=200
-    )
-    slug = models.SlugField(
-        verbose_name='Слаг жанра',
-        unique=True,
-        db_index=True
-    )
 
     class Meta:
         verbose_name = 'Жанр'
@@ -182,8 +95,10 @@ class Title(models.Model):
     genre = models.ManyToManyField(
         Genre,
         related_name='titles',
-        verbose_name='Жанр'
+        verbose_name='Жанры'
     )
+    # Меняя genre на genres падает один тест.
+    # Миграции выполняю и везде меняю genre на genres
 
     class Meta:
         verbose_name = 'Произведение'
@@ -193,19 +108,23 @@ class Title(models.Model):
         return self.name
 
 
-class Review(CreatedModel):
+class Review(TimeDateModelMixin):
     """Модель отзывов."""
+    text = models.TextField(
+        verbose_name='Текст',
+        help_text='Введите ваш текст!',
+    )
 
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='reviews_author',
+        related_name='reviews',
         verbose_name='Автор отзыва',
     )
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
-        related_name='reviews_title',
+        related_name='reviews',
         verbose_name='Отзыв к произведению',
     )
     score = models.SmallIntegerField(
@@ -237,19 +156,23 @@ class Review(CreatedModel):
         ]
 
 
-class Comment(CreatedModel):
+class Comment(TimeDateModelMixin):
     """Модель комментариев к отзыву."""
+    text = models.TextField(
+        verbose_name='Текст',
+        help_text='Введите ваш текст!',
+    )
 
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='comments_author',
+        related_name='comments',
         verbose_name='Автор комментария',
     )
     review = models.ForeignKey(
         Review,
         on_delete=models.CASCADE,
-        related_name='comments_review',
+        related_name='comments',
         verbose_name='Комментарии к отзыву',
     )
 

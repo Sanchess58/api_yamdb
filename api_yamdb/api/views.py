@@ -1,3 +1,5 @@
+from auth.get_token import get_tokens_for_user
+from auth.send_code import send_mail_with_code
 from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import Avg
@@ -8,23 +10,17 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from reviews.models import Category, Genre, Review, Title, User
 
 from api.filters import TitleFilter
-from api.mixins import ModelMixinSet
-from api.permissions import (
-    ChangeAdminOnly, StaffOrReadOnly, AuthorOrStaffOrReadOnly
-)
-from api.serializers import (
-    ActivationSerializer, AdminSerializer, CategorySerializer,
-    CommentSerializer, GenreSerializer, ReviewsSerializer,
-    SignUpSerializer, TitleCreateSerializer,
-    TitleReciveSerializer, UsersSerializer
-)
-from auth.get_token import get_tokens_for_user
-from auth.send_code import send_mail_with_code
-from reviews.models import (
-    Category, Genre, Review, Title, User,
-)
+from api.mixins import CRUDMixinSet
+from api.permissions import (AuthorOrStaffOrReadOnly, ChangeAdminOnly,
+                             StaffOrReadOnly)
+from api.serializers import (ActivationSerializer, AdminSerializer,
+                             CategorySerializer, CommentSerializer,
+                             GenreSerializer, ReviewsSerializer,
+                             SignUpSerializer, TitleCreateSerializer,
+                             TitleReciveSerializer, UsersSerializer)
 
 
 class SignUp(APIView):
@@ -62,8 +58,10 @@ class Activation(APIView):
     def post(self, request):
         serializer = ActivationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = User.objects.get(
-            username=serializer.validated_data['username'])
+        user = get_object_or_404(
+            User,
+            username=serializer.validated_data['username']
+        )
         token = get_tokens_for_user(user)
         return Response({'token': token},
                         status=status.HTTP_201_CREATED)
@@ -95,11 +93,10 @@ class UserViewSet(viewsets.ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class CategoryViewSet(ModelMixinSet):
+class CategoryViewSet(CRUDMixinSet):
     """
     Получить список всех категорий.
     """
@@ -112,7 +109,7 @@ class CategoryViewSet(ModelMixinSet):
     lookup_field = 'slug'
 
 
-class GenreViewSet(ModelMixinSet):
+class GenreViewSet(CRUDMixinSet):
     """
     Получить список всех жанров.
     """
@@ -137,7 +134,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitleReciveSerializer
 
     def get_queryset(self):
-        return Title.objects.annotate(rating=Avg('reviews_title__score'))
+        return Title.objects.annotate(rating=Avg('reviews__score'))
 
     def get_serializer_class(self):
         """
@@ -157,7 +154,9 @@ class ReviewsViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = ReviewsSerializer
-    permission_classes = (AuthorOrStaffOrReadOnly,)
+    permission_classes = (
+        AuthorOrStaffOrReadOnly,
+    )
 
     def get_title(self):
         """Получаем произведение для отзыва."""
@@ -165,7 +164,7 @@ class ReviewsViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Получаем queryset."""
-        return self.get_title().reviews_title.all()
+        return self.get_title().reviews.all()
 
     def perform_create(self, serializer):
         """Переопределяем метод create."""
@@ -190,7 +189,7 @@ class CommentsViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Получаем queryset."""
-        return self.get_review().comments_review.all()
+        return self.get_review().comments.all()
 
     def perform_create(self, serializer):
         """Переопределяем метод create."""

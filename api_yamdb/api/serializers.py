@@ -1,12 +1,9 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.http import Http404
 from rest_framework import serializers
-
-from reviews.models import (
-    ROLE_CHOICES, Category, Comment,
-    Genre, Review, Title, User,
-)
+from rest_framework.generics import get_object_or_404
+from reviews.models import Category, Comment, Genre, Review, Title, User
+from users.models import UserRole
 
 
 class SignUpSerializer(serializers.ModelSerializer):
@@ -35,7 +32,7 @@ class SignUpSerializer(serializers.ModelSerializer):
         return data
 
 
-class ActivationSerializer(serializers.ModelSerializer):
+class ActivationSerializer(serializers.Serializer):
     """
     Сериализатор получения JWT-токена.
     """
@@ -47,17 +44,8 @@ class ActivationSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'confirmation_code')
 
-    def validate_username(self, username):
-        if User.objects.filter(username=username).exists():
-            return username
-        raise Http404(f'Недопустимое имя пользователя'
-                      f'или пользователь `{username}` не найден.')
-        # У нас, к сожалению, не получилось вернуть код 404 из сериализатора
-        # А тесты требуют именно 404, поэтому чтобы не засорять вьюхи
-        # решили реализовать эту логику подобным образом
-
     def validate(self, data):
-        user = User.objects.get(username=data['username'])
+        user = get_object_or_404(User, username=data['username'])
         if data['confirmation_code'] != user.confirmation_code:
             raise ValidationError(
                 {"Ошибка": 'Неверный код подтверждения'}
@@ -70,7 +58,7 @@ class AdminSerializer(serializers.ModelSerializer):
     Сериализатор работы администратора с доступом к ролям.
     """
 
-    role = serializers.ChoiceField(choices=ROLE_CHOICES, required=False)
+    role = serializers.ChoiceField(choices=UserRole.choices, required=False)
 
     class Meta:
         model = User
@@ -103,7 +91,7 @@ class CategorySerializer(serializers.ModelSerializer):
     """
 
     class Meta:
-        exclude = ('id', )
+        fields = ('name', 'slug')
         model = Category
 
 
@@ -113,7 +101,7 @@ class GenreSerializer(serializers.ModelSerializer):
     """
 
     class Meta:
-        exclude = ('id', )
+        fields = ('name', 'slug')
         model = Genre
 
 
@@ -138,7 +126,8 @@ class TitleCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Title
         fields = (
-            '__all__'
+            'name', 'year', 'category',
+            'description', 'genre', 'id'
         )
 
 
@@ -147,18 +136,16 @@ class TitleReciveSerializer(serializers.ModelSerializer):
     Сериализатор получения произведений.
     """
 
-    category = CategorySerializer(
-        read_only=True,
-    )
-    genre = GenreSerializer(
-        many=True,
-        read_only=True,
-    )
+    category = CategorySerializer(read_only=True)
+    genre = GenreSerializer(many=True, read_only=True)
     rating = serializers.FloatField()
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = (
+            'name', 'year', 'category',
+            'description', 'genre', 'id', 'rating'
+        )
         read_only_fields = (
             'id', 'name', 'year', 'rating', 'description',
         )
