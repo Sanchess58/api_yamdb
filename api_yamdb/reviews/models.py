@@ -97,8 +97,6 @@ class Title(models.Model):
         related_name='titles',
         verbose_name='Жанры'
     )
-    # Меняя genre на genres падает один тест.
-    # Миграции выполняю и везде меняю genre на genres
 
     class Meta:
         verbose_name = 'Произведение'
